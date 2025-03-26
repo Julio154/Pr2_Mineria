@@ -1,9 +1,3 @@
-import numpy as np
-import pandas as pd
-import nltk
-nltk.download('punkt')
-nltk.download('punkt_tab')
-nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 from sklearn.cluster import KMeans
@@ -14,6 +8,12 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.model_selection import StratifiedKFold
+import numpy as np
+import pandas as pd
+import nltk
+nltk.download('punkt')
+nltk.download('punkt_tab')
+nltk.download('stopwords')
 
 
 # Trabajar con datos de Texto en scikit-learn: https://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html
@@ -30,7 +30,7 @@ X = data['text'].astype(str).to_numpy()
 
 # Tokenizamos el texto
 count_vect = CountVectorizer()
-X_train_counts = count_vect.fit_transform(data)
+X_train_counts = count_vect.fit_transform(data['text'].astype(str))
 print(X_train_counts.shape)
 
 # Ahora, vamos a convertir las palabras en vectores de frecuencias
@@ -90,59 +90,39 @@ for i, (tra, tst) in enumerate(skf.split(X,y)):
         # Entrenamiento
         text_binary.fit(X[tra])
         text_frecuency.fit(X[tra])
-        text_kmeans.fit(X[tra])
-        text_sgd.fit(X[tra])
         
         # Test
         labels1 = text_binary.predict(X[tst])
         labels2 = text_frecuency.predict(X[tst])
-        labels3 = text_kmeans.predict(X[tst])
-        labels4 = text_sgd.predict(X[tst])
-        
+
         # Calculo de metricas
         acc1 = np.mean(labels1 == y[tst])
         acc2 = np.mean(labels2 == y[tst])
-        acc3 = np.mean(labels3 == y[tst])
-        acc4 = np.mean(labels4 == y[tst])
-        print(acc1)
-        print(acc2)
-        print(acc3)
-        print(acc4)
+
+        print(f'Binary: acc1')
+        print(f'Frecuency: acc2')
+
 
     # Clasificacion
     if fit_classification:
         # Entrenamiento
         text_sgd.fit(X[tra], y[tra])
-        text_binary.fit(X[tra], y[tra])
-        text_frecuency.fit(X[tra], y[tra])
         text_kmeans.fit(X[tra], y[tra])
 
         # Test (obtener predicciones)
         predictedsgd = text_sgd.predict(X[tst])
-        predictedbinary = text_binary.predict(X[tst])
-        predictedfrecuency = text_frecuency.predict(X[tst])
         predictedtfidf = text_kmeans.predict(X[tst])
         
         # Calculo de metricas de calidad (ahora, solo accuracy)
         acc_sgd = np.mean(predictedsgd == y[tst])
-        acc_binary = np.mean(predictedbinary == y[tst])
-        acc_frecuency = np.mean(predictedfrecuency == y[tst])
         acc_tfidf = np.mean(predictedtfidf == y[tst])
 
-        print(f'Binary: {acc_binary}')
-        accuracies1[i] = acc_binary
-        print(f'Frecuency: {acc_frecuency}')
-        accuracies2[i] = acc_frecuency
         print(f'KMeans: {acc_tfidf}')
         accuracies3[i] = acc_tfidf
         print(f'TF-IDF: {acc_sgd}')
         accuracies4[i] = acc_tfidf
         
 # Tras el K-Fold, hay que mostrar la precision media obtenida ( o cualquier otra metrica de interes, pero promediada)
-avg_acc1 = np.average(accuracies1)
-print(f'Precision media binary = {avg_acc1}')
-avg_acc2 = np.average(accuracies2)
-print(f'Precision media frecuency = {avg_acc2}')
 avg_acc3 = np.average(accuracies3)
 print(f'Precision media kmeans = {avg_acc3}')
 avg_acc4 = np.average(accuracies4)
