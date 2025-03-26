@@ -14,7 +14,7 @@ from sklearn.model_selection import StratifiedKFold
 # Visualizar clusters con t-SNE: https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
 
 
-dataset = 'news_full.csv'
+dataset = 'news_reducido.csv'
 
 # Leer los datos en formato csv
 data = pd.read_csv(dataset)
