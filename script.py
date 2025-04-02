@@ -28,19 +28,6 @@ data = pd.read_csv(dataset)
 # Nos quedamos con el texto (puedes quedarte con más información si quieres)
 X = data['text'].astype(str).to_numpy()
 
-# Tokenizamos el texto
-count_vect = CountVectorizer()
-X_train_counts = count_vect.fit_transform(data['text'].astype(str))
-print(X_train_counts.shape)
-
-# Ahora, vamos a convertir las palabras en vectores de frecuencias
-tfidf_transformer = TfidfTransformer()
-X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
-print(X_train_tfidf.shape)
-
-
-
-
 # Ahora, procesamos las etiquetas, para cada clase, le asignamos un valor numérico entre 0 y el número de clases
 enc = OrdinalEncoder()
 y = enc.fit_transform(np.reshape(data['category'], (-1, 1))).reshape(-1)
@@ -76,10 +63,7 @@ text_sgd = Pipeline([
 
 
 # Ahora, para cada fold:
-accuracies1 = np.zeros(5)
-accuracies2 = np.zeros(5)
-accuracies3 = np.zeros(5)
-accuracies4 = np.zeros(5)
+accuracies = np.zeros(5)
 for i, (tra, tst) in enumerate(skf.split(X,y)):
         
     fit_clustering = True
@@ -90,42 +74,38 @@ for i, (tra, tst) in enumerate(skf.split(X,y)):
         # Entrenamiento
         text_binary.fit(X[tra])
         text_frecuency.fit(X[tra])
+        text_kmeans.fit(X[tra])
         
         # Test
         labels1 = text_binary.predict(X[tst])
         labels2 = text_frecuency.predict(X[tst])
+        labels3 = text_kmeans.predict(X[tst])
 
         # Calculo de metricas
-        acc1 = np.mean(labels1 == y[tst])
-        acc2 = np.mean(labels2 == y[tst])
-
-        print(f'Binary: acc1')
-        print(f'Frecuency: acc2')
+        acc = np.mean(labels1 == y[tst])
+        print(f'Binary: {acc}')
+        acc = np.mean(labels2 == y[tst])
+        print(f'Frecuency: {acc}')
+        acc = np.mean(labels3 == y[tst])
+        print(f'KMeans: {acc}')
 
 
     # Clasificacion
     if fit_classification:
         # Entrenamiento
         text_sgd.fit(X[tra], y[tra])
-        text_kmeans.fit(X[tra], y[tra])
 
         # Test (obtener predicciones)
         predictedsgd = text_sgd.predict(X[tst])
-        predictedtfidf = text_kmeans.predict(X[tst])
         
         # Calculo de metricas de calidad (ahora, solo accuracy)
         acc_sgd = np.mean(predictedsgd == y[tst])
-        acc_tfidf = np.mean(predictedtfidf == y[tst])
 
-        print(f'KMeans: {acc_tfidf}')
-        accuracies3[i] = acc_tfidf
         print(f'TF-IDF: {acc_sgd}')
-        accuracies4[i] = acc_tfidf
+        accuracies[i] = acc_sgd
         
 # Tras el K-Fold, hay que mostrar la precision media obtenida ( o cualquier otra metrica de interes, pero promediada)
-avg_acc3 = np.average(accuracies3)
-print(f'Precision media kmeans = {avg_acc3}')
-avg_acc4 = np.average(accuracies4)
-print(f'Precision media tfidf = {avg_acc4}')
+avg_acc = np.average(accuracies)
+print(f'Precision media = {avg_acc}')
 
 
