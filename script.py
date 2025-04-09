@@ -11,6 +11,8 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.model_selection import StratifiedKFold
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import nltk
@@ -24,10 +26,13 @@ def identificar_clusters(text, labels, ye, encod):
     cluster_labels = {}
     for cluster in range(text['clf'].n_clusters):
         cluster_indices = np.where(labels == cluster)[0]
-        cluster_true_labels = ye[cluster_indices]
-        most_common_label_num = Counter(cluster_true_labels).most_common(1)[0][0]
-        most_common_label_str = encod.inverse_transform([[most_common_label_num]])[0][0]
-        cluster_labels[cluster] = most_common_label_str
+        if len(cluster_indices) == 0:
+            cluster_labels[cluster] = "Sin datos"
+        else:
+            cluster_true_labels = ye[cluster_indices]
+            most_common_label_num = Counter(cluster_true_labels).most_common(1)[0][0]
+            most_common_label_str = encod.inverse_transform([[most_common_label_num]])[0][0]
+            cluster_labels[cluster] = most_common_label_str
 
     return cluster_labels
 
@@ -60,18 +65,18 @@ iterador = iter(random_states)
 #pipeline para clustering
 text_binary = Pipeline([
     ('vect', CountVectorizer(binary=True)),
-    ('clf', KMeans(n_clusters=4, random_state=random.choice(random_states))),
+    ('clf', KMeans(n_clusters=4, random_state=42)),
 ])
 
 text_frecuency = Pipeline([
     ('vect', CountVectorizer()),
-    ('clf', KMeans(n_clusters=4, random_state=random.choice(random_states))),
+    ('clf', KMeans(n_clusters=4, random_state=42)),
 ])
 
 text_tfidf = Pipeline([
     ('vect', CountVectorizer()),
     ('tfidf', TfidfTransformer()),
-    ('clf', KMeans(n_clusters=4, random_state=random.choice(random_states))),
+    ('clf', KMeans(n_clusters=4, random_state=42)),
 ])
 
 #pipeline para clasificacion
@@ -102,7 +107,6 @@ for i, (tra, tst) in enumerate(skf.split(X,y)):
         labels2 = text_frecuency.predict(X[tst])
         labels3 = text_tfidf.predict(X[tst])
 
-        print(identificar_clusters(text_tfidf, labels3, ye=y[tst], encod=enc))
         folds = "Fold "+str(i)
         etiquetas_usadas[folds] = identificar_clusters(text_tfidf, labels3, y[tst], enc)
 
@@ -116,7 +120,18 @@ for i, (tra, tst) in enumerate(skf.split(X,y)):
         acc = np.mean(labels3 == y[tst])
         print(f'TF-IDF: {acc}')
 
+        # Preparacion de datos para t-SNE
+        tfidf_transformed = text_tfidf.transform(X[tst])
+        tsne_tfidf = TSNE(n_components=2, random_state=42)
+        X_embedded = tsne_tfidf.fit_transform(tfidf_transformed)
+        # Visualizacion de los clusteres
+        plt.figure(figsize=(10, 6))
+        plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=labels3, cmap='viridis', marker='o')
+        plt.title('t-SNE Clustering')
+        plt.colorbar()
+        plt.show()
 
+    '''
     # Clasificacion
     if fit_classification:
         # Entrenamiento
@@ -134,6 +149,9 @@ for i, (tra, tst) in enumerate(skf.split(X,y)):
 # Tras el K-Fold, hay que mostrar la precision media obtenida ( o cualquier otra metrica de interes, pero promediada)
 avg_acc = np.average(accuracies)
 print(f'Precision media = {avg_acc}')
+'''
+
+
 
 print(etiquetas_usadas)
 
