@@ -12,6 +12,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.model_selection import StratifiedKFold
 from sklearn.manifold import TSNE
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import SGDClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -65,18 +70,19 @@ iterador = iter(random_states)
 #pipeline para clustering
 text_binary = Pipeline([
     ('vect', CountVectorizer(binary=True)),
-    ('clf', KMeans(n_clusters=4, random_state=42)),
+    ('clf', KMeans(n_clusters=4, random_state=200)),
 ])
 
 text_frecuency = Pipeline([
     ('vect', CountVectorizer()),
-    ('clf', KMeans(n_clusters=4, random_state=42)),
+    ('clf', KMeans(n_clusters=4, random_state=200)),
 ])
 
+# Pipeline optima para clustering #
 text_tfidf = Pipeline([
-    ('vect', CountVectorizer()),
-    ('tfidf', TfidfTransformer()),
-    ('clf', KMeans(n_clusters=4, random_state=42)),
+    ('vect', CountVectorizer(max_df=0.8, min_df=2, ngram_range=(1, 2))),
+    ('tfidf', TfidfTransformer(norm='l2')),
+    ('clf', KMeans(init='k-means++', max_iter=300, n_clusters=4)),
 ])
 
 #pipeline para clasificacion
@@ -85,51 +91,93 @@ text_sgd = Pipeline([
     ('tfidf', TfidfTransformer()),
     ('clf', MultinomialNB()),
 ])
+# Pipeline optima para clasificacion #
+text_SGDC = Pipeline([
+    ('count', CountVectorizer(max_df=0.9, min_df=5, ngram_range=(1, 2))),
+    ('tfidf', TfidfTransformer(norm='l2')),
+    ('clf', SGDClassifier(random_state=42, alpha=0.0001, max_iter=1000, penalty='l2')),
+])
+
+
+param_grid_tfidf = {
+    'vect__max_df': [0.8, 0.9],
+    'vect__min_df': [1, 2, 5],
+    'vect__ngram_range': [(1, 1), (1, 2)],
+    'tfidf__norm': ['l1', 'l2'],
+    'clf__n_clusters': [4],
+    'clf__init': ['k-means++', 'random'],
+    'clf__max_iter': [300, 500, 1000]
+}
+
+grid_search_tfidf = GridSearchCV(
+    text_tfidf,
+    param_grid_tfidf,
+    cv=5,  # 5-fold cross-validation
+    scoring='accuracy',  # Adjust scoring if needed
+    n_jobs=-1,
+    verbose=1
+)
+grid_search_tfidf.fit(X, y)
+
+print("mejores parametros: ", grid_search_tfidf.best_params_)
+print("mejor score: ", grid_search_tfidf.best_score_)
 
 # Ahora, para cada fold:
 etiquetas_usadas = {}
 accuracies = np.zeros(5)
-for i, (tra, tst) in enumerate(skf.split(X,y)):
+for i, (tra, tst) in enumerate(skf.split(X, y)):
         
     fit_clustering = True
     fit_classification = True
-    text_tfidf['clf'].random_state = next(iterador)
+    #text_tfidf['clf'].random_state = next(iterador)
     
     # Clustering
     if fit_clustering:
         # Entrenamiento
-        text_binary.fit(X[tra])
-        text_frecuency.fit(X[tra])
+        #text_binary.fit(X[tra])
+        #text_frecuency.fit(X[tra])
         text_tfidf.fit(X[tra])
         
         # Test
-        labels1 = text_binary.predict(X[tst])
-        labels2 = text_frecuency.predict(X[tst])
+        #labels1 = text_binary.predict(X[tst])
+        #labels2 = text_frecuency.predict(X[tst])
         labels3 = text_tfidf.predict(X[tst])
 
         folds = "Fold "+str(i)
         etiquetas_usadas[folds] = identificar_clusters(text_tfidf, labels3, y[tst], enc)
 
         # Calculo de metricas
-        acc = np.mean(labels1 == y[tst])
+        #acc = np.mean(labels1 == y[tst])
         #decoded_labels = enc.inverse_transform(y[tst].reshape(-1, 1)).reshape(-1)
         #print(f'Labels: {decoded_labels}')
-        print(f'Binary: {acc}')
-        acc = np.mean(labels2 == y[tst])
-        print(f'Frecuency: {acc}')
+        #print(f'Binary: {acc}')
+        #acc = np.mean(labels2 == y[tst])
+        #print(f'Frecuency: {acc}')
         acc = np.mean(labels3 == y[tst])
-        print(f'TF-IDF: {acc}')
+        print(f'TF-IDF {folds}: {acc}')
 
+        '''
+        centroids = text_binary['clf'].cluster_centers_
+        iterations = text_binary['clf'].n_iter_
+
+        if iterations < text_binary['clf'].max_iter:
+            print('Centroides estables (converged)')
+        else:
+            print('Centroides inestables (not converged)')
+        '''
+
+        '''
         # Preparacion de datos para t-SNE
-        tfidf_transformed = text_tfidf.transform(X[tst])
-        tsne_tfidf = TSNE(n_components=2, random_state=42)
-        X_embedded = tsne_tfidf.fit_transform(tfidf_transformed)
+        transformed = text_frecuency.transform(X[tst])
+        tsne = TSNE(n_components=2, random_state=42)
+        X_embedded = tsne.fit_transform(transformed)
         # Visualizacion de los clusteres
         plt.figure(figsize=(10, 6))
-        plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=labels3, cmap='viridis', marker='o')
+        plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=labels2, cmap='viridis', marker='o')
         plt.title('t-SNE Clustering')
         plt.colorbar()
         plt.show()
+        '''
 
     '''
     # Clasificacion
