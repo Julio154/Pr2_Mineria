@@ -8,6 +8,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.model_selection import StratifiedKFold
@@ -97,21 +98,24 @@ text_SGDC = Pipeline([
     ('tfidf', TfidfTransformer(norm='l2')),
     ('clf', SGDClassifier(random_state=42, alpha=0.0001, max_iter=1000, penalty='l2')),
 ])
+text_SGDC = Pipeline([
+    ('count', CountVectorizer(max_df=0.9, min_df=5, ngram_range=(1, 2))),
+    ('tfidf', TfidfTransformer(norm='l2')),
+    ('clf', KNeighborsClassifier()),
+])
 
 
-param_grid_tfidf = {
-    'vect__max_df': [0.8, 0.9],
-    'vect__min_df': [1, 2, 5],
-    'vect__ngram_range': [(1, 1), (1, 2)],
-    'tfidf__norm': ['l1', 'l2'],
-    'clf__n_clusters': [4],
-    'clf__init': ['k-means++', 'random'],
-    'clf__max_iter': [300, 500, 1000]
+param_grid_knn = {
+    'clf__n_neighbors': [3, 5, 9],
+    'clf__weights': ['uniform', 'distance'],
+    'clf__metric': ['euclidean', 'manhattan'],
+    'clf__p': [1, 2],
+    'clf__algorithm': ['auto']
 }
 
 grid_search_tfidf = GridSearchCV(
     text_tfidf,
-    param_grid_tfidf,
+    param_grid_knn,
     cv=5,  # 5-fold cross-validation
     scoring='accuracy',  # Adjust scoring if needed
     n_jobs=-1,
